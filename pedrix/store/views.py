@@ -1,66 +1,99 @@
 from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.decorators import login_required
-from .models import Customer, Product, Cart, CartItem, Order, OrderItem
-from .forms import LoginForm
+from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
+from django.contrib.auth import login, logout
+from .models import Product, Cart, CartItem
+
+def register_view(request):
+    if request.method == 'POST':
+        form = UserCreationForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('login')
+    else:
+        form = UserCreationForm()
+    return render(request, 'register.html', {'form': form})
 
 def login_view(request):
     if request.method == 'POST':
-        form = LoginForm(request.POST)
+        form = AuthenticationForm(request, data=request.POST)
         if form.is_valid():
-            username = form.cleaned_data['username']
-            password = form.cleaned_data['password']
-            user = authenticate(request, username=username, password=password)
-            if user is not None:
-                login(request, user)
-                return redirect('product_list')
+            user = form.get_user()
+            login(request, user)
+            return redirect('product_list')
     else:
-        form = LoginForm()
+        form = AuthenticationForm()
     return render(request, 'login.html', {'form': form})
 
-@login_required
-def product_list(request):
+def product_list_view(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    
     products = Product.objects.all()
     return render(request, 'product_list.html', {'products': products})
 
-@login_required
-def add_to_cart(request, product_id):
+def cart_view(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    
+    user = request.user
+    cart, _ = Cart.objects.get_or_create(user=user)
+    cart_items = cart.cartitem_set.all()
+    return render(request, 'cart.html', {'cart': cart, 'cart_items': cart_items})
+
+def add_to_cart_view(request, product_id):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    
+    user = request.user
     product = Product.objects.get(id=product_id)
-    customer = request.user.customer
-    cart, created = Cart.objects.get_or_create(customer=customer)
+    cart, _ = Cart.objects.get_or_create(user=user)
     cart_item, created = CartItem.objects.get_or_create(cart=cart, product=product)
-    cart_item.quantity += 1
-    cart_item.save()
+    
+    if not created:
+        cart_item.quantity += 1
+        cart_item.save()
+    
     return redirect('cart')
 
-@login_required
-def cart(request):
-    customer = request.user.customer
-    cart = Cart.objects.get(customer=customer)
-    return render(request, 'cart.html', {'cart': cart})
+def remove_from_cart_view(request, cart_item_id):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    
+    user = request.user
+    cart_item = CartItem.objects.get(id=cart_item_id, cart__user=user)
+    cart_item.delete()
+    
+    return redirect('cart')
 
-@login_required
-def checkout(request):
-    customer = request.user.customer
-    cart = Cart.objects.get(customer=customer)
-    total = 0
-    for cart_item in cart.cartitem_set.all():
-        total += cart_item.product.price * cart_item.quantity
-    order = Order.objects.create(customer=customer, total=total)
-    for cart_item in cart.cartitem_set.all():
-        OrderItem.objects.create(order=order, product=cart_item.product, quantity=cart_item.quantity)
-        # Reduzir o estoque do produto com base na quantidade comprada
-        product = cart_item.product
-        product.stock -= cart_item.quantity
-        product.save()
-    cart.delete()
-    return redirect('order_confirmation')
+def checkout_view(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    
+    user = request.user
+    cart, _ = Cart.objects.get_or_create(user=user)
+    
+    if request.method == 'POST':
+        # Processar o pedido e finalizar a compra
+        
+        # Limpar o carrinho
+        cart.cartitem_set.all().delete()
+        
+        # Redirecionar para a página de confirmação de pedido
+        return redirect('order_confirmation')
+    
+    cart_items = cart.cartitem_set.all()
+    return render(request, 'checkout.html', {'cart': cart, 'cart_items': cart_items})
 
-@login_required
-def order_confirmation(request):
-    return render(request, 'order_confirmation.html')
+def order_confirmation_view(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    
+    user = request.user
+    cart, _ = Cart.objects.get_or_create(user=user)
+    cart_items = cart.cartitem_set.all()
+    
+    return render(request, 'order_confirmation.html', {'cart': cart, 'cart_items': cart_items})
 
-@login_required
 def logout_view(request):
     logout(request)
     return redirect('login')
