@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <h2>Carrinho</h2>
+  <ul>
+    {% for cart_item in cart.cartitem_set.all %}
+      <li>
+        <img src="{{ cart_item.product.image }}" alt="{{ cart_item.product.name }}" width="100" height="100">
+        <h3>{{ cart_item.product.name }}</h3>
+        <p>Quantidade: {{ cart_item.quantity }}</p>
+      </li>
+    {% endfor %}
+  </ul>
+  <a href="{% url 'checkout' %}">Finalizar Compra</a>
+{% endblock %}
