@@ -97,3 +97,32 @@ def order_confirmation_view(request):
 def logout_view(request):
     logout(request)
     return redirect('login')
+
+
+def create_products():
+    products = [
+        {
+            'name': 'Poke Ball',
+            'description': 'Descrição do Produto 1',
+            'price': 200.00,
+            'image': 'https://www.pokemongobrasil.com/wp-content/uploads/2016/08/pokebola-go.png',
+        },
+        {
+            'name': 'Great Ball',
+            'description': 'Descrição do Produto 2',
+            'price': 600.00,
+            'image': 'https://static.wikia.nocookie.net/pokemon/images/a/ac/Great_Ball_Artwork.png',
+        },
+        {
+            'name': 'Ultra Ball',
+            'description': 'Descrição do Produto 3',
+            'price': 1200.00,
+            'image': 'https://i.pinimg.com/originals/67/ea/dd/67eadd55b0734f51a603d07d9eabcddf.jpg',
+        },
+    ]
+    
+    for product_data in products:
+        product = Product(**product_data)
+        product.save()
+
+create_products ()
