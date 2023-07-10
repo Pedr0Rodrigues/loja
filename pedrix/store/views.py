@@ -124,5 +124,3 @@ def create_products():
     for product_data in products:
         product = Product(**product_data)
         product.save()
-
-create_products ()
